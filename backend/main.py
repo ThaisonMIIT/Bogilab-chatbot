@@ -26,8 +26,10 @@ if not GROQ_API_KEY:
     raise RuntimeError("Thiếu biến môi trường GROQ_API_KEY")
 
 # Model free tier của Groq. Có thể đổi qua biến môi trường GROQ_MODEL.
-# llama-3.3-70b-versatile: chất lượng tốt, đủ nhanh, free tier hào phóng.
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+# openai/gpt-oss-120b: chất lượng tốt, đủ nhanh, free tier hào phóng.
+# Lưu ý: Groq thường xuyên deprecate model cũ — nếu gặp lỗi "model_not_found",
+# xem danh sách model còn hoạt động tại https://console.groq.com/docs/models
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SYSTEM_PROMPT = build_system_prompt()
@@ -77,6 +79,10 @@ def ask_groq(session_id: str, user_message: str) -> str:
         "max_tokens": 800,
         "temperature": 0.4,
     }
+    # Các model dòng gpt-oss của Groq có "reasoning" tốn token riêng —
+    # để "low" thì trả lời nhanh và không bị cạn max_tokens trước khi có nội dung.
+    if "gpt-oss" in GROQ_MODEL:
+        payload["reasoning_effort"] = "low"
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
 
     with httpx.Client(timeout=30) as client:
