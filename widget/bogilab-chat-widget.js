@@ -5,7 +5,7 @@
  * <script src="bogilab-chat-widget.js"></script>
  */
 (function () {
-  const API_URL = "https://YOUR-BACKEND-DOMAIN.com/chat"; // <-- đổi thành domain backend đã deploy
+  const API_URL = "https://bogilab-chatbot-production.up.railway.app/chat";
 
   const STORAGE_KEY = "bogilab_session_id";
   let sessionId = localStorage.getItem(STORAGE_KEY) || null;
