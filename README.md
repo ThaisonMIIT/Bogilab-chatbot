@@ -1,6 +1,6 @@
 # Chatbot Bogilab — Telegram + Web
 
-Một backend duy nhất (FastAPI + Google Gemini API, miễn phí), phục vụ cả Telegram bot và widget chat nhúng vào web.
+Một backend duy nhất (FastAPI + Groq API, miễn phí, không giới hạn vùng miền), phục vụ cả Telegram bot và widget chat nhúng vào web.
 
 ## Cấu trúc
 ```
@@ -14,14 +14,15 @@ widget/
   bogilab-chat-widget.js   # nhúng vào web tự code
 ```
 
-## Bước 1 — Lấy API key Gemini (miễn phí)
-1. Vào https://aistudio.google.com/apikey (đăng nhập bằng tài khoản Google).
-2. Bấm **Create API key** → chọn hoặc tạo 1 Google Cloud project → copy key dạng `AIzaSy...`.
-3. Copy vào biến `GEMINI_API_KEY`.
+## Bước 1 — Lấy API key Groq (miễn phí, không giới hạn vùng miền)
+1. Vào https://console.groq.com/keys (đăng nhập bằng Google hoặc email).
+2. Bấm **Create API Key** → đặt tên (vd "bogilab-bot") → copy key dạng `gsk_...`.
+3. Copy vào biến `GROQ_API_KEY`.
 
-Free tier hiện tại của `gemini-2.0-flash` đủ dùng cho quy mô 1 cửa hàng (giới hạn theo phút/ngày,
-không tốn phí — nếu sau này lượng khách tăng nhiều, chỉ cần đổi sang gói trả phí của Google mà
-không phải sửa code).
+Lưu ý: ban đầu dự định dùng Google Gemini, nhưng Google chặn tạo API key mới với tài khoản
+đăng ký ở Nga (dựa theo hồ sơ tài khoản, không chỉ IP — đổi VPN không giải quyết được). Groq
+không có giới hạn này, free tier hào phóng, tốc độ phản hồi rất nhanh, chất lượng tốt với
+model `llama-3.3-70b-versatile`.
 
 ## Bước 2 — Tạo Telegram bot (2 phút)
 1. Mở Telegram, tìm **@BotFather**.

@@ -3,7 +3,8 @@ Backend chung cho chatbot Bogilab.
 - POST /chat        -> dùng cho widget web
 - Telegram webhook  -> dùng cho bot Telegram (chạy trong cùng app, xem telegram_bot.py)
 
-AI: Google Gemini (free tier) qua REST API.
+AI: Groq (free tier, chuẩn API tương thích OpenAI). Không bị giới hạn vùng miền
+như Google Gemini AI Studio.
 
 Chạy local:  uvicorn main:app --reload --port 8000
 Deploy:      xem README.md (Railway / Render / VPS)
@@ -20,16 +21,14 @@ from pydantic import BaseModel
 
 from knowledge_base import build_system_prompt
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise RuntimeError("Thiếu biến môi trường GEMINI_API_KEY")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise RuntimeError("Thiếu biến môi trường GROQ_API_KEY")
 
-# Model free tier của Google. Có thể đổi qua biến môi trường GEMINI_MODEL.
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
-GEMINI_URL = (
-    f"https://generativelanguage.googleapis.com/v1beta/models/"
-    f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
-)
+# Model free tier của Groq. Có thể đổi qua biến môi trường GROQ_MODEL.
+# llama-3.3-70b-versatile: chất lượng tốt, đủ nhanh, free tier hào phóng.
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SYSTEM_PROMPT = build_system_prompt()
 
@@ -62,41 +61,40 @@ class ChatResponse(BaseModel):
     session_id: str
 
 
-def ask_gemini(session_id: str, user_message: str) -> str:
+def ask_groq(session_id: str, user_message: str) -> str:
     """
-    Gọi Gemini API (REST) với lịch sử hội thoại của session này.
-    Định dạng Gemini: contents = [{role: "user"|"model", parts: [{text: ...}]}]
-    System prompt truyền riêng qua "system_instruction".
+    Gọi Groq API (chuẩn OpenAI chat completions) với lịch sử hội thoại của session này.
     """
     history = SESSIONS.setdefault(session_id, [])
-    history.append({"role": "user", "parts": [{"text": user_message}]})
+    history.append({"role": "user", "content": user_message})
     history[:] = history[-MAX_HISTORY_MESSAGES:]
 
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+
     payload = {
-        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": history,
-        "generationConfig": {"maxOutputTokens": 800, "temperature": 0.4},
+        "model": GROQ_MODEL,
+        "messages": messages,
+        "max_tokens": 800,
+        "temperature": 0.4,
     }
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
 
     with httpx.Client(timeout=30) as client:
-        resp = client.post(GEMINI_URL, json=payload)
+        resp = client.post(GROQ_URL, json=payload, headers=headers)
 
     if resp.status_code != 200:
-        raise RuntimeError(f"Gemini API lỗi {resp.status_code}: {resp.text[:300]}")
+        raise RuntimeError(f"Groq API lỗi {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
     try:
-        candidate = data["candidates"][0]
-        reply_text = "".join(
-            part.get("text", "") for part in candidate["content"]["parts"]
-        ).strip()
+        reply_text = data["choices"][0]["message"]["content"].strip()
     except (KeyError, IndexError):
         reply_text = (
             "Xin lỗi, mình chưa trả lời được câu này. "
             "Vui lòng liên hệ trực tiếp Telegram @Clickbuy_ru."
         )
 
-    history.append({"role": "model", "parts": [{"text": reply_text}]})
+    history.append({"role": "assistant", "content": reply_text})
     history[:] = history[-MAX_HISTORY_MESSAGES:]
     return reply_text
 
@@ -113,9 +111,9 @@ def chat(req: ChatRequest):
 
     session_id = req.session_id or str(uuid.uuid4())
     try:
-        reply = ask_gemini(session_id, req.message.strip())
+        reply = ask_groq(session_id, req.message.strip())
     except Exception as e:
-        raise HTTPException(500, f"Lỗi khi gọi Gemini API: {e}")
+        raise HTTPException(500, f"Lỗi khi gọi Groq API: {e}")
 
     return ChatResponse(reply=reply, session_id=session_id)
 

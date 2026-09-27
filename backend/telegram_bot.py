@@ -47,11 +47,11 @@ async def telegram_webhook(secret: str, request: Request):
         return {"ok": True}
 
     # dùng chính Telegram chat_id làm session_id để giữ lịch sử hội thoại riêng từng khách
-    from main import ask_gemini  # import trễ để tránh vòng lặp import
+    from main import ask_groq  # import trễ để tránh vòng lặp import
 
     session_id = f"tg-{chat_id}"
     try:
-        reply = ask_gemini(session_id, text)
+        reply = ask_groq(session_id, text)
     except Exception as e:
         reply = f"Xin lỗi, hệ thống đang gặp sự cố. Vui lòng liên hệ trực tiếp @Clickbuy_ru. ({e})"
 
